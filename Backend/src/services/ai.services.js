@@ -110,4 +110,4 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
 }
 
-module.exports = { generateInterviewReport, generateResumePdf }
+module.exports = {generateInterviewReport, generateResumePdf }
