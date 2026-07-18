@@ -4,14 +4,16 @@ import { useAuth } from '../hooks/useAuth'
 
 const Register = () => {
     const navigate = useNavigate();
-    const [username, setUsername] = usestate('')
+    const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const {loading, handleRegister} = useAuth()
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        await handleRegister(username, email, password)
-        navigate('/')
+        const response = await handleRegister({ username, email, password })
+        if (response?.user) {
+            navigate('/')
+        }
         }
         
         if(loading) {
