@@ -42,15 +42,26 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
 `
 
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
             responseMimeType: "application/json",
             responseSchema: zodToJsonSchema(interviewReportSchema),
+            maxOutputTokens: 4096
         }
     })
+    let json;
 
-    return JSON.parse(response.text)
+    try {
+        json = JSON.parse(response.text);
+    } catch (err) {
+        console.error("Invalid JSON from Gemini:");
+        console.log(response.text);
+
+        throw new Error("Gemini returned invalid JSON.");
+    }
+
+return json;
 
 
 }
@@ -93,10 +104,9 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
                         you can highlight the content using some colors or different font styles but the overall design should be simple and professional.
                         The content should be ATS friendly, i.e. it should be easily parsable by ATS systems without losing important information.
                         The resume should not be so lengthy, it should ideally be 1-2 pages long when converted to PDF. Focus on quality rather than quantity and make sure to include all the relevant information that can increase the candidate's chances of getting an interview call for the given job description.
-                    `
-
+                        `
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
             responseMimeType: "application/json",
