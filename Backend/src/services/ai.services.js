@@ -29,40 +29,127 @@ const interviewReportSchema = z.object({
         focus: z.string().describe("The main focus of this day in the preparation plan, e.g. data structures, system design, mock interviews etc."),
         tasks: z.array(z.string()).describe("List of tasks to be done on this day to follow the preparation plan, e.g. read a specific book or article, solve a set of problems, watch a video etc.")
     })).describe("A day-wise preparation plan for the candidate to follow in order to prepare for the interview effectively"),
-    title: z.string().describe("The title of the job for which the interview report is generated"),
+    title: z.string().min(1).describe("The title of the job for which the interview report is generated"),
 })
 
-async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
+async function generateInterviewReport({
+    resume,
+    selfDescription,
+    jobDescription
+}) {
 
+    const prompt = `
+You are an expert technical interviewer.
 
-    const prompt = `Generate an interview report for a candidate with the following details:
-                        Resume: ${resume}
-                        Self Description: ${selfDescription}
-                        Job Description: ${jobDescription}
-`
+Analyze the candidate's resume and the job description.
 
-    const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: zodToJsonSchema(interviewReportSchema),
-            maxOutputTokens: 4096
-        }
-    })
-    let json;
+Return ONLY valid JSON.
+
+Do NOT return markdown.
+Do NOT use \`\`\`json.
+Do NOT explain anything.
+
+The JSON MUST have EXACTLY this structure:
+
+{
+  "title": "Job Title",
+  "matchScore": 85,
+  "technicalQuestions": [
+    {
+      "question": "",
+      "intention": "",
+      "answer": ""
+    }
+  ],
+  "behavioralQuestions": [
+    {
+      "question": "",
+      "intention": "",
+      "answer": ""
+    }
+  ],
+  "skillGaps": [
+    {
+      "skill": "",
+      "severity": "low"
+    }
+  ],
+  "preparationPlan": [
+    {
+      "day": 1,
+      "focus": "",
+      "tasks": [
+        ""
+      ]
+    }
+  ]
+}
+
+Rules:
+
+- title must be the job title from the job description.
+- matchScore must be between 0 and 100.
+- Give exactly 3 technical questions.
+- Give exactly 3 behavioral questions.
+- Give at least 3 skill gaps.
+- Give a 7-day preparation plan.
+- Return ONLY JSON.
+
+Resume:
+
+${resume}
+
+Self Description:
+
+${selfDescription}
+
+Job Description:
+
+${jobDescription}
+`;
 
     try {
-        json = JSON.parse(response.text);
+
+        const response = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                temperature: 0.2,
+                maxOutputTokens: 8192
+            }
+        });
+
+        const text =
+            typeof response.text === "function"
+                ? response.text()
+                : response.text;
+
+        console.log("========= AI RESPONSE =========");
+        console.log(text);
+        console.log("===============================");
+
+        const json = JSON.parse(text);
+
+        // Validate using Zod
+        const parsed = interviewReportSchema.safeParse(json);
+
+        if (!parsed.success) {
+
+            console.error(parsed.error.format());
+
+            throw new Error("Gemini response does not match schema.");
+        }
+
+        return parsed.data;
+
     } catch (err) {
-        console.error("Invalid JSON from Gemini:");
-        console.log(response.text);
 
-        throw new Error("Gemini returned invalid JSON.");
+        console.error("Gemini Error:");
+        console.error(err);
+
+        throw err;
     }
-
-return json;
-
 
 }
 
